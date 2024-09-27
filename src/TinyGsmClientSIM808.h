@@ -12,9 +12,13 @@
 
 #include "TinyGsmClientSIM800.h"
 #include "TinyGsmGPS.tpp"
+#include "TinyGsmBluetooth.tpp"
 
-class TinyGsmSim808 : public TinyGsmSim800, public TinyGsmGPS<TinyGsmSim808> {
+class TinyGsmSim808 : public TinyGsmSim800,
+                      public TinyGsmGPS<TinyGsmSim808>,
+                      public TinyGsmBluetooth<TinyGsmSim808> {
   friend class TinyGsmGPS<TinyGsmSim808>;
+  friend class TinyGsmBluetooth<TinyGsmSim808>;
 
  public:
   explicit TinyGsmSim808(Stream& stream) : TinyGsmSim800(stream) {}
@@ -41,7 +45,7 @@ class TinyGsmSim808 : public TinyGsmSim800, public TinyGsmGPS<TinyGsmSim808> {
   // works only with ans SIM808 V2
   String getGPSrawImpl() {
     sendAT(GF("+CGNSINF"));
-    if (waitResponse(10000L, GF(GSM_NL "+CGNSINF:")) != 1) { return ""; }
+    if (waitResponse(10000L, GF(AT_NL "+CGNSINF:")) != 1) { return ""; }
     String res = stream.readStringUntil('\n');
     waitResponse();
     res.trim();
@@ -55,7 +59,7 @@ class TinyGsmSim808 : public TinyGsmSim800, public TinyGsmGPS<TinyGsmSim808> {
                   int* year = 0, int* month = 0, int* day = 0, int* hour = 0,
                   int* minute = 0, int* second = 0) {
     sendAT(GF("+CGNSINF"));
-    if (waitResponse(10000L, GF(GSM_NL "+CGNSINF:")) != 1) { return false; }
+    if (waitResponse(10000L, GF(AT_NL "+CGNSINF:")) != 1) { return false; }
 
     streamSkipUntil(',');                // GNSS run status
     if (streamGetIntBefore(',') == 1) {  // fix status
@@ -104,20 +108,20 @@ class TinyGsmSim808 : public TinyGsmSim800, public TinyGsmGPS<TinyGsmSim808> {
       streamSkipUntil('\n');            // VPA
 
       // Set pointers
-      if (lat != NULL) *lat = ilat;
-      if (lon != NULL) *lon = ilon;
-      if (speed != NULL) *speed = ispeed;
-      if (alt != NULL) *alt = ialt;
-      if (vsat != NULL) *vsat = ivsat;
-      if (usat != NULL) *usat = iusat;
-      if (accuracy != NULL) *accuracy = iaccuracy;
+      if (lat != nullptr) *lat = ilat;
+      if (lon != nullptr) *lon = ilon;
+      if (speed != nullptr) *speed = ispeed;
+      if (alt != nullptr) *alt = ialt;
+      if (vsat != nullptr) *vsat = ivsat;
+      if (usat != nullptr) *usat = iusat;
+      if (accuracy != nullptr) *accuracy = iaccuracy;
       if (iyear < 2000) iyear += 2000;
-      if (year != NULL) *year = iyear;
-      if (month != NULL) *month = imonth;
-      if (day != NULL) *day = iday;
-      if (hour != NULL) *hour = ihour;
-      if (minute != NULL) *minute = imin;
-      if (second != NULL) *second = static_cast<int>(secondWithSS);
+      if (year != nullptr) *year = iyear;
+      if (month != nullptr) *month = imonth;
+      if (day != nullptr) *day = iday;
+      if (hour != nullptr) *hour = ihour;
+      if (minute != nullptr) *minute = imin;
+      if (second != nullptr) *second = static_cast<int>(secondWithSS);
 
       waitResponse();
       return true;
@@ -126,6 +130,36 @@ class TinyGsmSim808 : public TinyGsmSim800, public TinyGsmGPS<TinyGsmSim808> {
     streamSkipUntil('\n');  // toss the row of commas
     waitResponse();
     return false;
+  }
+
+  /*
+   * Bluetooth functions
+   */
+
+  bool enableBluetoothImpl() {
+    sendAT(GF("+BTPOWER=1"));
+    if (waitResponse() != 1) { return false; }
+    return true;
+  }
+
+  bool disableBluetoothImpl() {
+    sendAT(GF("+BTPOWER=0"));
+    if (waitResponse() != 1) { return false; }
+    return true;
+  }
+
+  bool setBluetoothVisibilityImpl(bool visible) {
+    sendAT(GF("+BTVIS="), visible);
+    if (waitResponse() != 1) { return false; }
+
+    return true;
+  }
+
+  bool setBluetoothHostNameImpl(const char* name) {
+    sendAT(GF("+BTHOST="), name);
+    if (waitResponse() != 1) { return false; }
+
+    return true;
   }
 };
 

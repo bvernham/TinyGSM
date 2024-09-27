@@ -11,11 +11,14 @@
 
 // Select your modem:
 #define TINY_GSM_MODEM_SIM800
-// #define TINY_GSM_MODEM_SIM900
 // #define TINY_GSM_MODEM_SIM808
 // #define TINY_GSM_MODEM_SIM868
+// #define TINY_GSM_MODEM_SIM900
+// #define TINY_GSM_MODEM_SIM5360
 // #define TINY_GSM_MODEM_UBLOX
+// #define TINY_GSM_MODEM_SARAR4
 // #define TINY_GSM_MODEM_M95
+// #define TINY_GSM_MODEM_BG95
 // #define TINY_GSM_MODEM_BG96
 // #define TINY_GSM_MODEM_A6
 // #define TINY_GSM_MODEM_A7
@@ -23,7 +26,9 @@
 // #define TINY_GSM_MODEM_MC60
 // #define TINY_GSM_MODEM_MC60E
 // #define TINY_GSM_MODEM_ESP8266
+// #define TINY_GSM_MODEM_ESP32
 // #define TINY_GSM_MODEM_XBEE
+// #define TINY_GSM_MODEM_SEQUANS_MONARCH
 
 #include <TinyGsmClient.h>
 
@@ -32,15 +37,18 @@
 
 // Set serial for AT commands (to the module)
 // Use Hardware Serial on Mega, Leonardo, Micro
+#ifndef __AVR_ATmega328P__
 #define SerialAT Serial1
 
 // or Software Serial on Uno, Nano
-//#include <SoftwareSerial.h>
-//SoftwareSerial SerialAT(2, 3); // RX, TX
+#else
+#include <SoftwareSerial.h>
+SoftwareSerial SerialAT(2, 3);  // RX, TX
+#endif
 
 #include <StreamDebugger.h>
 StreamDebugger debugger(SerialAT, SerialMon);
-TinyGsm modem(debugger);
+TinyGsm        modem(debugger);
 
 void setup() {
   // Set console baud rate
@@ -52,22 +60,25 @@ void setup() {
   delay(6000);
 
   if (!modem.init()) {
-    SerialMon.println(F("***********************************************************"));
+    SerialMon.println(
+        F("***********************************************************"));
     SerialMon.println(F(" Cannot initialize modem!"));
-    SerialMon.println(F("   Use File -> Examples -> TinyGSM -> tools -> AT_Debug"));
+    SerialMon.println(
+        F("   Use File -> Examples -> TinyGSM -> tools -> AT_Debug"));
     SerialMon.println(F("   to find correct configuration"));
-    SerialMon.println(F("***********************************************************"));
+    SerialMon.println(
+        F("***********************************************************"));
     return;
   }
 
   bool ret = modem.factoryDefault();
 
-  SerialMon.println(F("***********************************************************"));
-  SerialMon.print  (F(" Return settings to Factory Defaults: "));
+  SerialMon.println(
+      F("***********************************************************"));
+  SerialMon.print(F(" Return settings to Factory Defaults: "));
   SerialMon.println((ret) ? "OK" : "FAIL");
-  SerialMon.println(F("***********************************************************"));
+  SerialMon.println(
+      F("***********************************************************"));
 }
 
-void loop() {
-
-}
+void loop() {}

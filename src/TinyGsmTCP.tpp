@@ -43,6 +43,11 @@
 
 template <class modemType, uint8_t muxCount>
 class TinyGsmTCP {
+  /* =========================================== */
+  /* =========================================== */
+  /*
+   * Define the interface
+   */
  public:
   /*
    * Basic functions
@@ -61,6 +66,7 @@ class TinyGsmTCP {
   inline modemType& thisModem() {
     return static_cast<modemType&>(*this);
   }
+  ~TinyGsmTCP() {}
 
   /*
    * Inner Client
@@ -118,7 +124,7 @@ class TinyGsmTCP {
     }
 
     size_t write(const char* str) {
-      if (str == NULL) return 0;
+      if (str == nullptr) return 0;
       return write((const uint8_t*)str, strlen(str));
     }
 
@@ -141,6 +147,8 @@ class TinyGsmTCP {
       // with the modem to see if anything has arrived without a UURC.
       if (!rx.size()) {
         if (millis() - prev_check > 500) {
+          // setting got_data to true will tell maintain to run
+          // modemGetAvailable(mux)
           got_data   = true;
           prev_check = millis();
         }
@@ -211,6 +219,8 @@ class TinyGsmTCP {
         }
         // Workaround: Some modules "forget" to notify about data arrival
         if (millis() - prev_check > 500) {
+          // setting got_data to true will tell maintain to run
+          // modemGetAvailable()
           got_data   = true;
           prev_check = millis();
         }
@@ -237,9 +247,8 @@ class TinyGsmTCP {
       return -1;
     }
 
-    // TODO(SRGDamia1): Implement peek
     int peek() override {
-      return -1;
+      return (uint8_t)rx.peek();
     }
 
     void flush() override {
@@ -248,7 +257,22 @@ class TinyGsmTCP {
 
     uint8_t connected() override {
       if (available()) { return true; }
+#if defined TINY_GSM_BUFFER_READ_AND_CHECK_SIZE
+      // If the modem is one where we can read and check the size of the buffer,
+      // then the 'available()' function will call a check of the current size
+      // of the buffer and state of the connection. [available calls maintain,
+      // maintain calls modemGetAvailable, modemGetAvailable calls
+      // modemGetConnected]  This cascade means that the sock_connected value
+      // should be correct and all we need
       return sock_connected;
+#elif defined TINY_GSM_NO_MODEM_BUFFER || defined TINY_GSM_BUFFER_READ_NO_CHECK
+      // If the modem doesn't have an internal buffer, or if we can't check how
+      // many characters are in the buffer then the cascade won't happen.
+      // We need to call modemGetConnected to check the sock state.
+      return at->modemGetConnected(mux);
+#else
+#error Modem client has been incorrectly created
+#endif
     }
     operator bool() override {
       return connected();
@@ -297,6 +321,12 @@ class TinyGsmTCP {
     RxFifo     rx;
   };
 
+  /* =========================================== */
+  /* =========================================== */
+  /*
+   * Define the default function implementations
+   */
+
   /*
    * Basic functions
    */
@@ -313,12 +343,12 @@ class TinyGsmTCP {
       }
     }
     while (thisModem().stream.available()) {
-      thisModem().waitResponse(15, NULL, NULL);
+      thisModem().waitResponse(15, nullptr, nullptr);
     }
 
 #elif defined TINY_GSM_NO_MODEM_BUFFER || defined TINY_GSM_BUFFER_READ_NO_CHECK
     // Just listen for any URC's
-    thisModem().waitResponse(100, NULL, NULL);
+    thisModem().waitResponse(100, nullptr, nullptr);
 
 #else
 #error Modem client has been incorrectly created
@@ -327,7 +357,7 @@ class TinyGsmTCP {
 
   // Yields up to a time-out period and then reads a character from the stream
   // into the mux FIFO
-  // TODO(SRGDamia1):  Do we need to wait two _timeout periods for no
+  // TODO(SRGDamia1):  Do we really need to wait _two_ timeout periods for no
   // character return?  Will wait once in the first "while
   // !stream.available()" and then will wait again in the stream.read()
   // function.
